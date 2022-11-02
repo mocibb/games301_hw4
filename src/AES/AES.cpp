@@ -164,11 +164,11 @@ void Energy2DSystem::Solve() {
 
   bool analyzePattern = false;
 
-  double oldCost = cost(x);
+  double oldCost = Cost(x);
 
   for (int i = 0; i < max_iters; ++i) {
 
-    fillGradientAndHessian(x, g, H);
+    FillGradientAndHessian(x, g, H);
 
     if (!analyzePattern) {
       solver.analyzePattern(H);
@@ -191,7 +191,7 @@ void Energy2DSystem::Solve() {
     Eigen::VectorXd newX;
     for (int j = 0; j < 64; j++) {
       newX = x + s * d;
-      const double newCost = cost(newX);
+      const double newCost = Cost(newX);
       if (newCost <= oldCost + armijoConst * s * d.dot(g)) {
         x = newX;
         std::cout << "iter " << i << ": " << "old cost = " << oldCost << ", new cost = " << newCost << std::endl;
@@ -237,18 +237,14 @@ void Energy2DSystem::PreCompute() {
   }
 }
 
-double Energy2DSystem::cost(const Eigen::VectorXd &x0) {
+double Energy2DSystem::Cost(const Eigen::VectorXd &x0) {
   double total = 0;
   for (auto face : xyzMesh_->polyfaces()) {
     auto vertices = xyzMesh_->polygonVertices(face);
-    Vector6d gl;
-    Matrix6d Hl;
 
     size_t i = vertices[0]->index();
     size_t j = vertices[1]->index();
     size_t k = vertices[2]->index();
-    size_t toGlobals[6] = {2 * i,     2 * i + 1, 2 * j,
-                           2 * j + 1, 2 * k,     2 * k + 1};
 
     Eigen::Vector2d ui = x0.segment(i * 2, 2);
     Eigen::Vector2d uj = x0.segment(j * 2, 2);
@@ -260,7 +256,7 @@ double Energy2DSystem::cost(const Eigen::VectorXd &x0) {
   return total;
 }
 
-void Energy2DSystem::fillGradientAndHessian(const Eigen::VectorXd &x0,
+void Energy2DSystem::FillGradientAndHessian(const Eigen::VectorXd &x0,
                                             Eigen::VectorXd &g,
                                             Eigen::SparseMatrix<double> &H) {
 

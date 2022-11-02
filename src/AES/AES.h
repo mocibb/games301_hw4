@@ -54,9 +54,9 @@ public:
   void Solve();
 
 protected:
-  double cost(const Eigen::VectorXd &x0);
+  double Cost(const Eigen::VectorXd &x0);
 
-  void fillGradientAndHessian(const Eigen::VectorXd &x0, Eigen::VectorXd &g,
+  void FillGradientAndHessian(const Eigen::VectorXd &x0, Eigen::VectorXd &g,
                               Eigen::SparseMatrix<double> &H);
 
   void PreCompute();
