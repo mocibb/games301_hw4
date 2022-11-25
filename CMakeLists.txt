@@ -22,7 +22,8 @@ add_definitions(/D_USE_MATH_DEFINES)
 #     set(Qt5Widgets_DIR /opt/Qt/5.4/gcc_64/lib/cmake/Qt5Widgets)
 # endif()
 
-
+#mac
+# cmake .. -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt5/
 
 #QT
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -34,16 +35,17 @@ find_package(Qt5Core REQUIRED)
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
 find_package(OpenGL REQUIRED)
-include_directories(${OPENGL_INCLUDE_DIR})
 find_package(GLUT REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIR})
 include_directories(${GLUT_INCLUDE_DIR})
 include_directories(/usr/include/eigen3/)
+include_directories(/opt/homebrew/include/eigen3)
+include_directories(/opt/homebrew/include/)
 include_directories(src)
 
 
 set(QRC_SOURCE_FILES src/surfacemeshprocessing.qrc)
 qt5_add_resources(QRC_FILES ${QRC_SOURCE_FILES})
-
 
 file (GLOB GUI_FILE
     src/main.cpp
@@ -93,11 +95,9 @@ source_group(MeshViewer FILES ${MeshViewer_FILE})
 source_group(PolyMesh FILES ${PolyMesh_FILE})
 source_group(AES FILES ${AES_FILE})
 
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL
-)
-
-
+#target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 target_link_libraries(${PROJECT_NAME} 
     ${GLUT_LIBRARY} 
     ${OPENGL_LIBRARY}

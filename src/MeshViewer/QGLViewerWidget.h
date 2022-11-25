@@ -1,10 +1,11 @@
 #pragma once
 #include <QOpenGLWidget>
+#include <QOpenGLFunctions>
 #include "../PolyMesh/include/PolyMesh/IOManager.h"
 
 class QOpenGLTexture;
 
-class QGLViewerWidget : public QOpenGLWidget
+class QGLViewerWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
 	Q_OBJECT
 public:
@@ -34,7 +35,7 @@ public:
 protected:
 	enum MaterialType { MaterialDefault, MaterialGold, MaterialSilver, MaterialEmerald, MaterialTin };
 	void SetMaterial(const MaterialType & mattype = MaterialGold) const;
-	void SetDefaultLight(void) const;
+	void SetDefaultLight(void);
 	void initializeGL(void) override;
 	void resizeGL(int w, int h) override;
 	void paintGL(void) override;

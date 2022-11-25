@@ -442,7 +442,7 @@ void MeshViewerWidget::DrawSceneMesh(void) {
   }
 }
 
-void MeshViewerWidget::DrawPoints(void) const {
+void MeshViewerWidget::DrawPoints(void) {
   glColor3d(1.0, 0.5, 0.5);
   glPointSize(5);
   glBegin(GL_POINTS);
@@ -462,7 +462,7 @@ void MeshViewerWidget::DrawPoints(void) const {
   glEnd();
 }
 
-void MeshViewerWidget::DrawWireframe(void) const {
+void MeshViewerWidget::DrawWireframe(void) {
   glColor3d(0.2, 0.2, 0.2);
   glBegin(GL_LINES);
   for (const auto &eh : polyMesh->edges()) {
@@ -477,7 +477,7 @@ void MeshViewerWidget::DrawWireframe(void) const {
   glEnd();
 }
 
-void MeshViewerWidget::DrawHiddenLines() const {
+void MeshViewerWidget::DrawHiddenLines() {
   glLineWidth(1.0);
   float backcolor[4];
   glGetFloatv(GL_COLOR_CLEAR_VALUE, backcolor);
@@ -498,7 +498,7 @@ void MeshViewerWidget::DrawHiddenLines() const {
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void MeshViewerWidget::DrawFlatLines(void) const {
+void MeshViewerWidget::DrawFlatLines(void) {
   glEnable(GL_POLYGON_OFFSET_FILL);
   glPolygonOffset(1.5f, 2.0f);
   glShadeModel(GL_FLAT);
@@ -526,7 +526,7 @@ void MeshViewerWidget::DrawFlat(void) const {
   glEnd();
 }
 
-void MeshViewerWidget::DrawBoundingBox(void) const {
+void MeshViewerWidget::DrawBoundingBox(void) {
   float linewidth;
   glGetFloatv(GL_LINE_WIDTH, &linewidth);
   glLineWidth(2.0f);
@@ -554,7 +554,7 @@ void MeshViewerWidget::DrawBoundingBox(void) const {
   glLineWidth(linewidth);
 }
 
-void MeshViewerWidget::DrawBoundary(void) const {
+void MeshViewerWidget::DrawBoundary(void) {
   float linewidth;
   glGetFloatv(GL_LINE_WIDTH, &linewidth);
   glLineWidth(10.0f);

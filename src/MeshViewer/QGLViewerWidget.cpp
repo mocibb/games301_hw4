@@ -41,8 +41,7 @@ void QGLViewerWidget::Init(void)
 	setFocusPolicy(Qt::StrongFocus);
 	//setAcceptDrops( true );  
 	//setCursor(PointingHandCursor);
-
-	SetProjectionMode(projectionmode);
+	// SetProjectionMode(projectionmode);
 }
 
 QSize QGLViewerWidget::minimumSizeHint(void) const
@@ -160,7 +159,7 @@ void QGLViewerWidget::SetMaterial(const MaterialType & mattype) const
 	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
 }
 
-void QGLViewerWidget::SetDefaultLight(void) const
+void QGLViewerWidget::SetDefaultLight(void)
 {
 	// lighting
 	GLfloat pos1[] = { 10.0f, 10.0f, -10.0f, 0.0f };
@@ -188,6 +187,9 @@ void QGLViewerWidget::SetDefaultLight(void) const
 
 void QGLViewerWidget::initializeGL(void)
 {
+	initializeOpenGLFunctions();
+	SetProjectionMode(projectionmode);
+	
 	// OpenGL state
 	glClearColor(1.0, 1.0, 1.0, 0.0);
 	glClearDepth(1.0);

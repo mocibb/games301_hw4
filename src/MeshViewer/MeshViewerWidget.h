@@ -35,13 +35,13 @@ protected:
 
 private:
 	void CalcUVMesh(void);
-	void DrawPoints(void) const;
-	void DrawWireframe(void) const;
-	void DrawHiddenLines(void) const;
-	void DrawFlatLines(void) const;
+	void DrawPoints(void);
+	void DrawWireframe(void);
+	void DrawHiddenLines(void);
+	void DrawFlatLines(void);
 	void DrawFlat(void) const;
-	void DrawBoundingBox(void) const;
-	void DrawBoundary(void) const;
+	void DrawBoundingBox(void);
+	void DrawBoundary(void);
 protected:
 	acamcad::polymesh::PolyMesh* polyMesh = new acamcad::polymesh::PolyMesh();
 	acamcad::polymesh::PolyMesh* xyzMesh = new acamcad::polymesh::PolyMesh();
