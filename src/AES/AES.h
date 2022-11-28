@@ -9,14 +9,14 @@
 #include "../PolyMesh/include/PolyMesh/PolyMesh.h"
 #include "../PolyMesh/include/PolyMesh/PolyMesh_Base.h"
 
-// #define NUMERIC_CHECK
+#define NUMERIC_CHECK
 
 #include "./AESUtil.h"
 
 typedef Eigen::Vector<double, 6> Vector6d;
 typedef Eigen::Matrix<double, 6, 6> Matrix6d;
 
-enum DeformationType { ARAP, SD };
+enum DeformationType { LSCM, ARAP, SD, MIPS };
 
 class DeformationEnergy {
 public:
@@ -50,6 +50,8 @@ public:
   Energy2DSystem(acamcad::polymesh::PolyMesh *xyzMesh,
                  acamcad::polymesh::PolyMesh *uvMesh,
                  const DeformationEnergy &energy);
+  
+  void AddFix(int idx, Eigen::Vector2d uv);
 
   void Solve();
 
@@ -59,13 +61,23 @@ protected:
   void FillGradientAndHessian(const Eigen::VectorXd &x0, Eigen::VectorXd &g,
                               Eigen::SparseMatrix<double> &H);
 
+  void PreSet();
+
   void PreCompute();
 
+  size_t RemapIndex(size_t);
+
   static constexpr int max_iters = 200;
-  static constexpr double convergence_eps = 1e-2;
+  static constexpr double convergence_eps = 1e-1;
 
   acamcad::polymesh::PolyMesh *xyzMesh_;
   acamcad::polymesh::PolyMesh *uvMesh_;
+  std::unordered_map<int, Eigen::Vector2d> fix_boundary_;
+
+  std::vector<size_t> fix_ids_;
+  std::vector<Eigen::Vector2d> fix_pts_;
+  size_t idx1_ = 1e10;
+  size_t idx2_ = 0;
   Eigen::VectorXd uv_;
   DeformationEnergy energy_;
   MatrixMapType sourceCoordinates_;

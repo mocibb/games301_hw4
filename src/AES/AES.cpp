@@ -29,8 +29,17 @@ double DeformationEnergy::Cost(const Eigen::Matrix2d &source,
   Eigen::Matrix2<T> target = createTarget<T>(ui, uj, uk);
   Eigen::Matrix2<T> F = target * source.inverse();
 
+  T cost = (T)0;
   // TODO: area
-  T cost = 0.5 * source.determinant() * (F.squaredNorm() + F.inverse().squaredNorm());
+  if (dtype_ == SD) {
+    cost = 0.5 * source.determinant() * (F.squaredNorm() + F.inverse().squaredNorm());
+  } else if (dtype_ == ARAP) {
+    cost = 0;
+  } else if (dtype_ == LSCM) {
+    cost = source.determinant() * (F.squaredNorm() - 2*F.determinant());
+  } else if (dtype_ == MIPS) {
+    cost = source.determinant() * F.squaredNorm() / std::abs<T>(F.determinant());
+  }
 
 #ifdef NUMERIC_CHECK
   if (output_detail_) {
@@ -77,7 +86,14 @@ void DeformationEnergy::ComputeDerivative(const Eigen::Matrix2d &source,
   Eigen::Matrix2<T> FF;
   FF << vv[0], vv[2], vv[1], vv[3];
 
-  auto cost = 0.5 * (FF.squaredNorm() + FF.inverse().squaredNorm());
+  T cost = (T)0;
+  if (dtype_ == SD) {
+    cost = 0.5 * (FF.squaredNorm() + FF.inverse().squaredNorm());
+  } else if (dtype_ == LSCM) {
+    cost = FF.squaredNorm() - 2*FF.determinant();
+  } else if (dtype_ == MIPS) {
+    cost = FF.squaredNorm() / std::abs<T>(FF.determinant());
+  }
 
   if (H_proj_) {
     TinyAD::project_positive_definite(cost.Hess,
@@ -154,17 +170,23 @@ Energy2DSystem::Energy2DSystem(acamcad::polymesh::PolyMesh *xyzMesh,
   PreCompute();
 }
 
+void Energy2DSystem::AddFix(int idx, Eigen::Vector2d uv) {
+  fix_boundary_.emplace(idx, uv);
+}
+
 void Energy2DSystem::Solve() {
 
   Eigen::SparseMatrix<double> H;
-  Eigen::VectorXd x = uv_;
-  Eigen::VectorXd g;
-
   Eigen::SimplicialLDLT<decltype(H)> solver;
 
   bool analyzePattern = false;
 
+  PreSet();
+  Eigen::VectorXd x = uv_;
+  Eigen::VectorXd g;
+
   double oldCost = Cost(x);
+  std::cout << "cost = " << oldCost << std::endl;
 
   for (int i = 0; i < max_iters; ++i) {
 
@@ -237,11 +259,27 @@ void Energy2DSystem::PreCompute() {
   }
 }
 
+void Energy2DSystem::PreSet() {
+  fix_ids_.clear();
+  fix_pts_.clear();
+  for (auto bb : fix_boundary_) {
+    fix_ids_.push_back(bb.first);
+    fix_pts_.push_back(bb.second);
+    idx1_ = std::min<size_t>(idx1_, bb.first);
+    idx2_ = std::max<size_t>(idx2_, bb.first);
+
+    uv_.segment(2 * bb.first, 2) = bb.second;
+  }
+}
+
+size_t Energy2DSystem::RemapIndex(size_t) {
+  return 0;
+}
+
 double Energy2DSystem::Cost(const Eigen::VectorXd &x0) {
   double total = 0;
   for (auto face : xyzMesh_->polyfaces()) {
     auto vertices = xyzMesh_->polygonVertices(face);
-
     size_t i = vertices[0]->index();
     size_t j = vertices[1]->index();
     size_t k = vertices[2]->index();
@@ -251,6 +289,13 @@ double Energy2DSystem::Cost(const Eigen::VectorXd &x0) {
     Eigen::Vector2d uk = x0.segment(k * 2, 2);
 
     total += energy_.Cost(sourceCoordinates_.at(face->index()), ui, uj, uk);
+  }
+
+  // 增加固定边界
+  for (const auto& bb : fix_boundary_) {
+    Eigen::Vector2d ui = x0.segment(bb.first * 2, 2);
+
+    total += 0.5*(ui-bb.second).squaredNorm();
   }
 
   return total;
@@ -284,8 +329,6 @@ void Energy2DSystem::FillGradientAndHessian(const Eigen::VectorXd &x0,
     energy_.ComputeDerivative(sourceCoordinates_.at(face->index()), ui, uj, uk,
                               gl, Hl);
 
-    // throw new std::runtime_error("check derivative");
-
     for (size_t n = 0; n < 6; n++) {
       g[toGlobals[n]] += gl[n];
       for (size_t m = 0; m < 6; m++) {
@@ -295,7 +338,43 @@ void Energy2DSystem::FillGradientAndHessian(const Eigen::VectorXd &x0,
     }
   }
 
-  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+  // 增加固定边界
+  if (fix_boundary_.size() > 0) {
+    // std::vector<Eigen::Triplet<double>> H_triplets2;
+    
+    // for (auto& tri : H_triplets) {
+    //   auto it = std::find(fix_ids_.begin(), fix_ids_.end(), tri.col()/2);
+    //   auto it2 = std::find(fix_ids_.begin(), fix_ids_.end(), tri.row()/2);
 
+    //   if ( it == fix_ids_.end() && it2 == fix_ids_.end() ) {
+    //     H_triplets2.push_back(tri);
+    //   } else {
+    //     if (it != fix_ids_.end()) {
+    //       if (it2 == fix_ids_.end()) {
+            
+    //         double v = fix_pts_[it-fix_ids_.begin()][tri.col()%2];
+    //         // std::cout << tri.row() << " " << tri.col() << " " << tri.value() << " " << v << std::endl;
+    //         g[tri.row()] += 2*tri.value()*v;
+    //       }
+    //     }
+    //   }
+    // }
+    // H_triplets2.push_back(Eigen::Triplet<double>(idx1_*2, idx1_*2, 1));
+    // H_triplets2.push_back(Eigen::Triplet<double>(idx1_*2+1, idx1_*2+1, 1));
+    // H_triplets2.push_back(Eigen::Triplet<double>(idx2_*2, idx2_*2, 1));
+    // H_triplets2.push_back(Eigen::Triplet<double>(idx2_*2+1, idx2_*2+1, 1));
+    // g.segment(idx1_*2, 2) = Eigen::Vector2d::Zero();
+    // g.segment(idx2_*2, 2) = Eigen::Vector2d::Zero();
+
+    for (auto bb : fix_boundary_) {
+      H_triplets.push_back(Eigen::Triplet<double>(bb.first*2, bb.first*2, 1));
+      H_triplets.push_back(Eigen::Triplet<double>(bb.first*2+1, bb.first*2+1, 1));
+      g.segment(bb.first, 2) += 0.5*(x0.segment(bb.first*2, 2)-bb.second);
+    }
+    H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+  } else {
+    H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+  }
+  
   // std::cout << "finish H" << std::endl;
 } 

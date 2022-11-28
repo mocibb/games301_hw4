@@ -78,6 +78,10 @@ file (GLOB PolyMesh_FILE
     src/include/PolyMesh/PolyMeshIterators.h
 )
 
+file (GLOB TUTTE_FILE
+    src/Tutte/Tutte.cpp
+)
+
 file (GLOB AES_FILE
     src/AES/AES.cpp
 )
@@ -86,6 +90,7 @@ add_executable(${PROJECT_NAME}
     ${GUI_FILE}
     ${MeshViewer_FILE}
     ${PolyMesh_FILE}
+    ${TUTTE_FILE}
     ${AES_FILE}
     ${QRC_FILES}
 )
@@ -93,11 +98,11 @@ add_executable(${PROJECT_NAME}
 source_group(GUI FILES ${GUI_FILE})
 source_group(MeshViewer FILES ${MeshViewer_FILE})
 source_group(PolyMesh FILES ${PolyMesh_FILE})
+source_group(TUTTE FILES ${TUTTE_FILE})
 source_group(AES FILES ${AES_FILE})
 
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL)
 
-#target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 target_link_libraries(${PROJECT_NAME} 
     ${GLUT_LIBRARY} 
     ${OPENGL_LIBRARY}
