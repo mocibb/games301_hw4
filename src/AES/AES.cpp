@@ -211,6 +211,7 @@ void Energy2DSystem::Solve() {
     constexpr double armijoConst = 1e-4;
 
     Eigen::VectorXd newX;
+
     for (int j = 0; j < 64; j++) {
       newX = x + s * d;
       const double newCost = Cost(newX);
@@ -292,11 +293,11 @@ double Energy2DSystem::Cost(const Eigen::VectorXd &x0) {
   }
 
   // 增加固定边界
-  for (const auto& bb : fix_boundary_) {
-    Eigen::Vector2d ui = x0.segment(bb.first * 2, 2);
+  // for (const auto& bb : fix_boundary_) {
+  //   Eigen::Vector2d ui = x0.segment(bb.first * 2, 2);
 
-    total += 0.5*(ui-bb.second).squaredNorm();
-  }
+  //   total += 0.5*(ui-bb.second).squaredNorm();
+  // }
 
   return total;
 }
@@ -332,49 +333,29 @@ void Energy2DSystem::FillGradientAndHessian(const Eigen::VectorXd &x0,
     for (size_t n = 0; n < 6; n++) {
       g[toGlobals[n]] += gl[n];
       for (size_t m = 0; m < 6; m++) {
-        H_triplets.push_back(
-            Eigen::Triplet<double>(toGlobals[n], toGlobals[m], Hl(n, m)));
+        Eigen::Triplet<double> tri(toGlobals[n], toGlobals[m], Hl(n, m));
+        if (fix_ids_.size()) {
+          auto it = std::find(fix_ids_.begin(), fix_ids_.end(), tri.col()/2);
+          auto it2 = std::find(fix_ids_.begin(), fix_ids_.end(), tri.row()/2);
+          if (it != fix_ids_.end() || it2 != fix_ids_.end()) {
+            continue;
+          }
+        }
+        H_triplets.push_back(tri);
       }
     }
   }
 
   // 增加固定边界
   if (fix_boundary_.size() > 0) {
-    // std::vector<Eigen::Triplet<double>> H_triplets2;
-    
-    // for (auto& tri : H_triplets) {
-    //   auto it = std::find(fix_ids_.begin(), fix_ids_.end(), tri.col()/2);
-    //   auto it2 = std::find(fix_ids_.begin(), fix_ids_.end(), tri.row()/2);
-
-    //   if ( it == fix_ids_.end() && it2 == fix_ids_.end() ) {
-    //     H_triplets2.push_back(tri);
-    //   } else {
-    //     if (it != fix_ids_.end()) {
-    //       if (it2 == fix_ids_.end()) {
-            
-    //         double v = fix_pts_[it-fix_ids_.begin()][tri.col()%2];
-    //         // std::cout << tri.row() << " " << tri.col() << " " << tri.value() << " " << v << std::endl;
-    //         g[tri.row()] += 2*tri.value()*v;
-    //       }
-    //     }
-    //   }
-    // }
-    // H_triplets2.push_back(Eigen::Triplet<double>(idx1_*2, idx1_*2, 1));
-    // H_triplets2.push_back(Eigen::Triplet<double>(idx1_*2+1, idx1_*2+1, 1));
-    // H_triplets2.push_back(Eigen::Triplet<double>(idx2_*2, idx2_*2, 1));
-    // H_triplets2.push_back(Eigen::Triplet<double>(idx2_*2+1, idx2_*2+1, 1));
-    // g.segment(idx1_*2, 2) = Eigen::Vector2d::Zero();
-    // g.segment(idx2_*2, 2) = Eigen::Vector2d::Zero();
-
-    for (auto bb : fix_boundary_) {
+    for (const auto& bb : fix_boundary_) {
       H_triplets.push_back(Eigen::Triplet<double>(bb.first*2, bb.first*2, 1));
       H_triplets.push_back(Eigen::Triplet<double>(bb.first*2+1, bb.first*2+1, 1));
-      g.segment(bb.first, 2) += 0.5*(x0.segment(bb.first*2, 2)-bb.second);
-    }
-    H.setFromTriplets(H_triplets.begin(), H_triplets.end());
-  } else {
-    H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+      // 不更新固定分量
+      g.segment(bb.first * 2, 2) = Eigen::Vector2d::Zero();
+    } 
   }
   
-  // std::cout << "finish H" << std::endl;
+  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+  std::cout << "finish H" << std::endl;
 } 
