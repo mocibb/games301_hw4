@@ -266,9 +266,6 @@ void Energy2DSystem::PreSet() {
   for (auto bb : fix_boundary_) {
     fix_ids_.push_back(bb.first);
     fix_pts_.push_back(bb.second);
-    idx1_ = std::min<size_t>(idx1_, bb.first);
-    idx2_ = std::max<size_t>(idx2_, bb.first);
-
     uv_.segment(2 * bb.first, 2) = bb.second;
   }
 }

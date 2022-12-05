@@ -76,8 +76,6 @@ protected:
 
   std::vector<size_t> fix_ids_;
   std::vector<Eigen::Vector2d> fix_pts_;
-  size_t idx1_ = 1e10;
-  size_t idx2_ = 0;
   Eigen::VectorXd uv_;
   DeformationEnergy energy_;
   MatrixMapType sourceCoordinates_;
