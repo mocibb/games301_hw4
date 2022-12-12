@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "../AES/AES.h"
+#include "../BFF/BFF.h"
 #include "../Tutte/Tutte.h"
 
 
@@ -42,17 +43,20 @@ void MeshViewerWidget::CalcUVMesh() {
   TutteEmbeding tutte(xyzMesh, uvMesh);
   tutte.Solve();
 
-  DeformationEnergy energy(DeformationType::LSCM); 
-  Energy2DSystem system(xyzMesh, uvMesh, energy);
-  auto boundary = tutte.GetBoundary();
-  size_t idx1 = boundary[0];
-  size_t idx2 = boundary[boundary.size()/2];
-  system.AddFix(idx1, Eigen::Vector2d(0, 0));
-  system.AddFix(idx2, Eigen::Vector2d(1, 0));
-  system.Solve();
+  BoundaryFlattenFirst bff(xyzMesh, uvMesh, 1);
+  bff.Solve();
 
-  TutteEmbeding tutte2(xyzMesh, uvMesh, MEANVALUE);
-  tutte2.Solve();
+  // DeformationEnergy energy(DeformationType::LSCM); 
+  // Energy2DSystem system(xyzMesh, uvMesh, energy);
+  // auto boundary = tutte.GetBoundary();
+  // size_t idx1 = boundary[0];
+  // size_t idx2 = boundary[boundary.size()/2];
+  // system.AddFix(idx1, Eigen::Vector2d(0, 0));
+  // system.AddFix(idx2, Eigen::Vector2d(1, 0));
+  // system.Solve();
+
+  // TutteEmbeding tutte2(xyzMesh, uvMesh, MEANVALUE);
+  // tutte2.Solve();
 }
 
 void MeshViewerWidget::Clear(void) { polyMesh->clear(); }

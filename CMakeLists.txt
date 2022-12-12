@@ -86,12 +86,17 @@ file (GLOB AES_FILE
     src/AES/AES.cpp
 )
 
+file (GLOB BFF_FILE
+    src/BFF/BFF.cpp
+)
+
 add_executable(${PROJECT_NAME}
     ${GUI_FILE}
     ${MeshViewer_FILE}
     ${PolyMesh_FILE}
     ${TUTTE_FILE}
     ${AES_FILE}
+    ${BFF_FILE}
     ${QRC_FILES}
 )
 
@@ -100,6 +105,7 @@ source_group(MeshViewer FILES ${MeshViewer_FILE})
 source_group(PolyMesh FILES ${PolyMesh_FILE})
 source_group(TUTTE FILES ${TUTTE_FILE})
 source_group(AES FILES ${AES_FILE})
+source_group(BFF FILES ${BFF_FILE})
 
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL)
 
