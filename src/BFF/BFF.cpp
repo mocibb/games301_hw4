@@ -1,7 +1,6 @@
 #include "./BFF.h"
 #include "../PolyMesh/include/Math/MPoint3.h"
 #include <Eigen/Dense>
-#include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <Eigen/SparseLU>
 
@@ -12,22 +11,27 @@ BoundaryFlattenFirst::BoundaryFlattenFirst(acamcad::polymesh::PolyMesh *xyzMesh,
                                            acamcad::polymesh::PolyMesh *uvMesh,
                                            int boundaryType)
     : xyzMesh_(xyzMesh), uvMesh_(uvMesh), boundaryType_(boundaryType),
-    A_(xyzMesh_->numVertices(), xyzMesh_->numVertices()) {
+      A_(xyzMesh_->numVertices(), xyzMesh_->numVertices())
+{
   PreCompute();
 }
 
-void BoundaryFlattenFirst::PreCompute() {
+void BoundaryFlattenFirst::PreCompute()
+{
   // 计算边界
   // 保存边界节点的index
   boundary_.clear();
 
-  for (const auto he : xyzMesh_->halfEdges()) {
+  for (const auto he : xyzMesh_->halfEdges())
+  {
     if (xyzMesh_->isBoundary(he) &&
         std::find(boundary_.begin(), boundary_.end(), he->toVertex()->index()) ==
-            boundary_.end()) {
+            boundary_.end())
+    {
       {
-        auto* cur = he;
-        do {
+        auto *cur = he;
+        do
+        {
           boundary_.push_back(cur->toVertex()->index());
           cur = cur->next();
         } while (cur != he);
@@ -40,13 +44,14 @@ void BoundaryFlattenFirst::PreCompute() {
   std::cout << "++++++++++++++++" << std::endl;
   // 边界长度
   boundary_length_ = Eigen::VectorXd::Zero(boundary_.size());
-  for (size_t k = 0; k < boundary_.size(); k++) {
+  for (size_t k = 0; k < boundary_.size(); k++)
+  {
     size_t i = boundary_[k];
-    size_t j = boundary_[(k+boundary_.size()-1)%boundary_.size()];
+    size_t j = boundary_[(k + boundary_.size() - 1) % boundary_.size()];
 
-    boundary_length_(k) = (xyzMesh_->vert(i)->position()-xyzMesh_->vert(j)->position()).norm();
+    boundary_length_(k) = (xyzMesh_->vert(i)->position() - xyzMesh_->vert(j)->position()).norm();
     // std::cout << boundary_length_(k) << std::endl;
-	}
+  }
   std::cout << "----------------" << std::endl;
 
   // 调整index，把边界放到最后
@@ -57,11 +62,15 @@ void BoundaryFlattenFirst::PreCompute() {
   auto bend = boundary_.end();
   int iidx = 0;
   int bidx = iN_;
-  for (auto v : vert) {
-    if (std::find(boundary_.begin(), boundary_.end(), v->index()) == bend) {
+  for (auto v : vert)
+  {
+    if (std::find(boundary_.begin(), boundary_.end(), v->index()) == bend)
+    {
       vertex2index_.emplace(v->index(), iidx);
       iidx++;
-    } else {
+    }
+    else
+    {
       vertex2index_.emplace(v->index(), bidx);
       bidx++;
     }
@@ -71,28 +80,32 @@ void BoundaryFlattenFirst::PreCompute() {
   Eigen::SparseMatrix<double> A(N_, N_);
   std::vector<Eigen::Triplet<double>> ATriplets;
 
-  for (auto f : xyzMesh_->polyfaces()) {
+  for (auto f : xyzMesh_->polyfaces())
+  {
     auto he = f->halfEdge();
-    do {
+    do
+    {
       int i = vertex2index_[he->fromVertex()->index()];
       int j = vertex2index_[he->toVertex()->index()];
 
       double w = 0;
 
-      if (!xyzMesh_->isBoundary(he)) {
-        const auto& a = he->fromVertex()->position();
-        const auto& b = he->next()->fromVertex()->position();
-        const auto& c = he->prev()->fromVertex()->position();
+      if (!xyzMesh_->isBoundary(he))
+      {
+        const auto &a = he->fromVertex()->position();
+        const auto &b = he->next()->fromVertex()->position();
+        const auto &c = he->prev()->fromVertex()->position();
 
         MVector3 u = a - c;
         MVector3 v = b - c;
 
-        double cotan = u.dot(v)/u.cross(v).norm();
-        if (std::isinf(cotan) || std::isnan(cotan)) {
+        double cotan = u.dot(v) / u.cross(v).norm();
+        if (std::isinf(cotan) || std::isnan(cotan))
+        {
           cotan = 0.0;
         }
 
-        w = 0.5*cotan;
+        w = 0.5 * cotan;
       }
 
       ATriplets.emplace_back(i, i, w);
@@ -102,31 +115,35 @@ void BoundaryFlattenFirst::PreCompute() {
 
       he = he->next();
     } while (he != f->halfEdge());
-
   }
 
   Eigen::SparseMatrix<double> id(N_, N_);
   id.setIdentity();
   A_.setFromTriplets(ATriplets.begin(), ATriplets.end());
-	A_ += id*1e-8;
-  
+  A_ += id * 1e-8;
+
   Aii_ = A_.block(0, 0, iN_, iN_);
   Aib_ = A_.block(0, iN_, iN_, bN_);
   Abb_ = A_.block(iN_, iN_, bN_, bN_);
 
+  A_solver_.analyzePattern(A_);
+  A_solver_.factorize(A_);
 
   // 计算曲率
   K_ = Eigen::VectorXd(iN_);
 
-	for (auto vi : vert) {
-		if (std::find(boundary_.begin(), boundary_.end(), vi->index()) == bend) {
-			int i = vertex2index_[vi->index()];
-			double angleDefect = 2*M_PI;
+  for (auto vi : vert)
+  {
+    if (std::find(boundary_.begin(), boundary_.end(), vi->index()) == bend)
+    {
+      int i = vertex2index_[vi->index()];
+      double angleDefect = 2 * M_PI;
 
       auto vjs = xyzMesh_->vertAdjacentVertices(vi);
       int n = vjs.size();
 
-      for (int j = 0; j < n; j++) {
+      for (int j = 0; j < n; j++)
+      {
         // 向量节点i到节点j
         MVector3 ej = vjs[j]->position() - vi->position();
         // 向量节点i到节点j+1
@@ -136,116 +153,125 @@ void BoundaryFlattenFirst::PreCompute() {
       }
 
       K_(i) = angleDefect;
-		}
-	}
+    }
+  }
 
-	k_ =  Eigen::VectorXd(bN_);
-	for (size_t k = 0; k < boundary_.size(); k++) {
-		size_t i = vertex2index_.at(boundary_[k])-iN_;
+  k_ = Eigen::VectorXd(bN_);
+  for (size_t k = 0; k < boundary_.size(); k++)
+  {
+    size_t i = vertex2index_.at(boundary_[k]) - iN_;
     double exteriorAngle = M_PI;
 
     auto vi = xyzMesh_->vert(boundary_[k]);
 
     auto faces = xyzMesh_->vertAdjacentPolygon(vi);
 
-    for (auto f : faces) {
+    for (auto f : faces)
+    {
       auto vjs = xyzMesh_->polygonVertices(f);
       int n = vjs.size();
 
       MVector3 ej[2];
       int idx = 0;
-      for (int j = 0; j < n; j++) {
-        if (vjs[j] != vi) {
+      for (int j = 0; j < n; j++)
+      {
+        if (vjs[j] != vi)
+        {
           ej[idx++] = vjs[j]->position() - vi->position();
         }
       }
       exteriorAngle -= vectorAngle(ej[0], ej[1]);
     }
-    
-    k_(i) = exteriorAngle;
-	}
 
+    k_(i) = exteriorAngle;
+  }
 }
 
-void BoundaryFlattenFirst::Solve() {
+void BoundaryFlattenFirst::Solve()
+{
   Eigen::VectorXd u = Eigen::VectorXd::Zero(bN_);
   Eigen::VectorXd ktilde = Eigen::VectorXd::Zero(bN_);
 
-  for (int iter = 0; iter < 10; iter++) {
-		// compute target dual boundary edge lengths
-		double L;
-		Eigen::VectorXd lstar, ldual;
-		computeTargetBoundaryLengths(u, lstar);
+  for (int iter = 0; iter < 10; iter++)
+  {
+    // compute target dual boundary edge lengths
+    double L;
+    Eigen::VectorXd lstar, ldual;
+    computeTargetBoundaryLengths(u, lstar);
 
-		L = computeTargetDualBoundaryLengths(lstar, ldual);
+    L = computeTargetDualBoundaryLengths(lstar, ldual);
     std::cout << "L = " << L << std::endl;
 
-		// set ktilde proportional to the most recent dual lengths
-    for (size_t k = 0; k < boundary_.size(); k++) {
+    // set ktilde proportional to the most recent dual lengths
+    for (size_t k = 0; k < boundary_.size(); k++)
+    {
 
-      size_t i = vertex2index_.at(boundary_[k])-iN_;
+      size_t i = vertex2index_.at(boundary_[k]) - iN_;
 
-			ktilde(i) = 2*M_PI*ldual(i)/L;
-		}
+      ktilde(i) = 2 * M_PI * ldual(i) / L;
+    }
 
-		// // compute target scale factors
-		if (!convertNeumannToDirichlet(-K_, k_ - ktilde, u)) {
+    // // compute target scale factors
+    if (!convertNeumannToDirichlet(-K_, k_ - ktilde, u))
+    {
       throw new std::runtime_error("wrong");
     };
-	}
+  }
 }
 
-double BoundaryFlattenFirst::computeTargetBoundaryLengths(const Eigen::VectorXd& u, Eigen::VectorXd& lstar) const
+double BoundaryFlattenFirst::computeTargetBoundaryLengths(const Eigen::VectorXd &u, Eigen::VectorXd &lstar) const
 {
-	double sum = 0.0;
-	lstar = Eigen::VectorXd(bN_);
-  for (size_t k = 0; k < boundary_.size(); k++) {
-    size_t i = vertex2index_.at(boundary_[k])-iN_;
-    size_t j = vertex2index_.at(boundary_[(k+boundary_.size()-1)%boundary_.size()])-iN_;
+  double sum = 0.0;
+  lstar = Eigen::VectorXd(bN_);
+  for (size_t k = 0; k < boundary_.size(); k++)
+  {
+    size_t i = vertex2index_.at(boundary_[k]) - iN_;
+    size_t j = vertex2index_.at(boundary_[(k + boundary_.size() - 1) % boundary_.size()]) - iN_;
 
-		lstar(i) = exp(0.5*(u(i) + u(j)))*boundary_length_(i);
-		sum += lstar(i);
-	}
+    lstar(i) = exp(0.5 * (u(i) + u(j))) * boundary_length_(i);
+    sum += lstar(i);
+  }
 
-	return sum;
+  return sum;
 }
 
-double BoundaryFlattenFirst::computeTargetDualBoundaryLengths(const Eigen::VectorXd& lstar, Eigen::VectorXd& ldual) const
+double BoundaryFlattenFirst::computeTargetDualBoundaryLengths(const Eigen::VectorXd &lstar, Eigen::VectorXd &ldual) const
 {
-	double sum = 0.0;
-	ldual = Eigen::VectorXd(bN_);
+  double sum = 0.0;
+  ldual = Eigen::VectorXd(bN_);
 
-  for (size_t k = 0; k < boundary_.size(); k++) {
-    size_t i = vertex2index_.at(boundary_[k])-iN_;
-    size_t j = vertex2index_.at(boundary_[(k+boundary_.size()-1)%boundary_.size()])-iN_;
+  for (size_t k = 0; k < boundary_.size(); k++)
+  {
+    size_t i = vertex2index_.at(boundary_[k]) - iN_;
+    size_t j = vertex2index_.at(boundary_[(k + boundary_.size() - 1) % boundary_.size()]) - iN_;
 
-		ldual(j) = 0.5*(lstar(i) + lstar(j));
-		sum += ldual(j);
-	}
+    ldual(j) = 0.5 * (lstar(i) + lstar(j));
+    sum += ldual(j);
+  }
 
-	return sum;
+  return sum;
 }
 
-
-void BoundaryFlattenFirst::closeLengths(const Eigen::VectorXd& lstar, const Eigen::MatrixXd& Ttilde, Eigen::VectorXd& ltilde) const
+void BoundaryFlattenFirst::closeLengths(const Eigen::VectorXd &lstar, const Eigen::MatrixXd &Ttilde, Eigen::VectorXd &ltilde) const
 {
   int N = lstar.rows();
-  Eigen::SparseMatrix<double> A(N+2, N+2);
-  Eigen::VectorXd rhs = Eigen::VectorXd::Zero(N+2);
+  Eigen::SparseMatrix<double> A(N + 2, N + 2);
+  Eigen::VectorXd rhs = Eigen::VectorXd::Zero(N + 2);
 
   std::vector<Eigen::Triplet<double>> ATriplets;
   auto vert = xyzMesh_->vertices();
-  for (size_t i = 0; i < boundary_.size(); i++) {
-    size_t next_i = boundary_[(i+1)%boundary_.size()];
+  for (size_t i = 0; i < boundary_.size(); i++)
+  {
+    size_t next_i = boundary_[(i + 1) % boundary_.size()];
     MVector3 ei = vert[i]->position() - vert[next_i]->position();
     double l = ei.norm();
-      
-    ATriplets.emplace_back(i, i, 1/l);
-    ATriplets.emplace_back(i, N+1, Ttilde(i, 0));
-    ATriplets.emplace_back(i, N+2, Ttilde(i, 1));
-    ATriplets.emplace_back(N+1, i, Ttilde(i, 0));
-    ATriplets.emplace_back(N+2, i, Ttilde(i, 1));
-    rhs[i] = lstar[i]/l;
+
+    ATriplets.emplace_back(i, i, 1 / l);
+    ATriplets.emplace_back(i, N + 1, Ttilde(i, 0));
+    ATriplets.emplace_back(i, N + 2, Ttilde(i, 1));
+    ATriplets.emplace_back(N + 1, i, Ttilde(i, 0));
+    ATriplets.emplace_back(N + 2, i, Ttilde(i, 1));
+    rhs[i] = lstar[i] / l;
   }
   A.setFromTriplets(ATriplets.begin(), ATriplets.end());
 
@@ -255,30 +281,28 @@ void BoundaryFlattenFirst::closeLengths(const Eigen::VectorXd& lstar, const Eige
   ltilde = a.head(N);
 }
 
-
-bool BoundaryFlattenFirst::convertNeumannToDirichlet(const Eigen::VectorXd& phi, const Eigen::VectorXd& h, Eigen::VectorXd& g)
+bool BoundaryFlattenFirst::convertNeumannToDirichlet(const Eigen::VectorXd &phi, const Eigen::VectorXd &h, Eigen::VectorXd &g)
 {
-  Eigen::VectorXd rhs(phi.rows()+h.rows());
+  Eigen::VectorXd rhs(phi.rows() + h.rows());
   rhs.head(phi.rows()) = phi;
   rhs.segment(phi.rows(), h.rows()) = -h;
 
-  Eigen::SparseLU<Eigen::SparseMatrix<double>> solver(A_);
-  Eigen::VectorXd a = solver.solve(rhs);
+  Eigen::VectorXd a = A_solver_.solve(rhs);
 
-	g = a.segment(phi.rows(), h.rows());
-	return true;
+  g = a.segment(phi.rows(), h.rows());
+  return true;
 }
 
-bool BoundaryFlattenFirst::extendHarmonic(const  Eigen::VectorXd& g,  Eigen::VectorXd& h)
+bool BoundaryFlattenFirst::extendHarmonic(const Eigen::VectorXd &g, Eigen::VectorXd &h)
 {
-	Eigen::VectorXd rhs = -(Aib_*g);
+  Eigen::VectorXd rhs = -(Aib_ * g);
 
   Eigen::SparseLU<Eigen::SparseMatrix<double>> solver(Aii_);
   Eigen::VectorXd a = solver.solve(rhs);
 
-  h.resize(a.rows()+g.rows());
+  h.resize(a.rows() + g.rows());
   h.head(a.rows()) = a;
   h.segment(a.rows(), h.rows()) = g;
 
-	return true;
+  return true;
 }

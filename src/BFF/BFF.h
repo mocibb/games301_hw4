@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <Eigen/Core>
 #include <Eigen/SparseCore>
+#include <Eigen/SparseCholesky>
 
 #include "../PolyMesh/include/PolyMesh/PolyMesh.h"
 #include "../PolyMesh/include/PolyMesh/PolyMesh_Base.h"
@@ -40,6 +41,9 @@ protected:
   Eigen::SparseMatrix<double> Aii_;
   Eigen::SparseMatrix<double> Aib_;
   Eigen::SparseMatrix<double> Abb_;
+
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> A_solver_;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> Aii_solver_;
 
   Eigen::VectorXd K_;
   Eigen::VectorXd k_;
