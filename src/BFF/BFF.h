@@ -9,8 +9,6 @@
 #include "../PolyMesh/include/PolyMesh/PolyMesh.h"
 #include "../PolyMesh/include/PolyMesh/PolyMesh_Base.h"
 
-#define NUMERIC_CHECK
-
 class BoundaryFlattenFirst {
   using MatrixMapType = std::unordered_map<size_t, Eigen::Matrix2d>;
 
@@ -23,8 +21,12 @@ public:
 
 protected:
   void PreCompute();
+  
+  bool extendCurve(const Eigen::VectorXd &gammaRe, const Eigen::VectorXd &gammaIm, Eigen::VectorXd &a, Eigen::VectorXd &b);
 
   bool extendHarmonic(const  Eigen::VectorXd& g,  Eigen::VectorXd& h);
+
+  void constructBestFitCurve(const Eigen::VectorXd &lstar, const Eigen::VectorXd &ktilde, Eigen::VectorXd &gammaRe, Eigen::VectorXd &gammaIm) const;
 
   void closeLengths(const Eigen::VectorXd& lstar, const Eigen::MatrixXd& Ttilde, Eigen::VectorXd& ltilde) const;
 
@@ -59,6 +61,8 @@ protected:
   std::vector<size_t> boundary_;
 
   Eigen::VectorXd boundary_length_;
+
+  Eigen::VectorXd target_;
 };
 
 #endif

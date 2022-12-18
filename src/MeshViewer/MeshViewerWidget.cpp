@@ -40,10 +40,10 @@ void MeshViewerWidget::CalcUVMesh() {
   // 清理uvMesh，每次load
   uvMesh->clear();
 
-  TutteEmbeding tutte(xyzMesh, uvMesh);
-  tutte.Solve();
+  // TutteEmbeding tutte(xyzMesh, uvMesh);
+  // tutte.Solve();
 
-  BoundaryFlattenFirst bff(xyzMesh, uvMesh, 1);
+  BoundaryFlattenFirst bff(xyzMesh, uvMesh, 2);
   bff.Solve();
 
   // DeformationEnergy energy(DeformationType::LSCM); 

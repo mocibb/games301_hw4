@@ -41,13 +41,13 @@ void TutteEmbeding::ComputeBoundary() {
 void TutteEmbeding::ComputeBoundaryUV(std::unordered_map<int, std::vector<double>>& vert2uv) {
   if (weightMethod_ != MEANVALUE) {
     int i = 0;
-    // 映射边界到2D， 100(半径)*exp(i theta[])
+    // 映射边界到2D，exp(i theta[])
     double step = 2 * M_PI / boundary_.size();
     for (auto idx : boundary_) {
       vert2uv.emplace(idx, std::vector<double>());
 
-      vert2uv[idx].push_back(1 * cos(i * step));
-      vert2uv[idx].push_back(1 * sin(i * step));
+      vert2uv[idx].push_back(cos(i * step));
+      vert2uv[idx].push_back(sin(i * step));
       i++;
     }
   } else {
